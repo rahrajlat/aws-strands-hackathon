@@ -12,6 +12,14 @@
 
 # Roverthinking
 
+[![Python](https://img.shields.io/badge/Python-3.11%2B-3776AB?logo=python&logoColor=white)](https://www.python.org/)
+[![AWS Bedrock](https://img.shields.io/badge/AWS-Bedrock-FF9900?logo=amazonaws&logoColor=white)](https://aws.amazon.com/bedrock/)
+[![Strands Decider 2B](https://img.shields.io/badge/Strands-Decider%202B-6B46C1?logo=data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCI+PGNpcmNsZSBjeD0iMTIiIGN5PSIxMiIgcj0iMTAiIGZpbGw9IndoaXRlIi8+PC9zdmc+&logoColor=white)](https://huggingface.co/StrandsAgents/strands-decider-2B-hobson-v19)
+[![Textual](https://img.shields.io/badge/TUI-Textual-004578?logo=python&logoColor=white)](https://textual.textualize.io/)
+[![uv](https://img.shields.io/badge/package%20manager-uv-DE5FE9?logo=astral&logoColor=white)](https://docs.astral.sh/uv/)
+[![Tests](https://img.shields.io/badge/tests-92%20passing-22C55E?logo=pytest&logoColor=white)](tests/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+
 **A Mars rover that thinks before it drives — and knows when to call home.**
 
 Roverthinking is a terminal game where a tiny rover named **Rovy** navigates
@@ -55,10 +63,9 @@ that any Strands agent can use in two lines of Python.
 3. [The reusable framework](#3-the-reusable-framework)
 4. [The two recipe patterns](#4-the-two-recipe-patterns)
 5. [What the rover does](#5-what-the-rover-does)
-6. [What was hard](#6-what-was-hard)
-7. [Measured results](#7-measured-results)
-8. [Quick start](#8-quick-start)
-9. [Project layout](#9-project-layout)
+6. [Measured results](#6-measured-results)
+7. [Quick start](#7-quick-start)
+8. [Project layout](#8-project-layout)
 
 ---
 
@@ -231,34 +238,7 @@ reaches the science site, and sad when she runs out of health.
 
 ---
 
-## 6. What was hard
-
-**Getting the question wording right.** Decider 2B is sensitive to phrasing.
-*"Is this dangerous?"* scores much worse than *"Is the hazard weather or
-something from space?"* — because the narrower the frame, the more the model
-can commit. I ran 40 hand-labelled test cases to tune each question, iterating
-on both the `instructions` text and the `criteria` for yes and no.
-
-**PyYAML's boolean trap.** Bare `yes` and `no` in YAML flow mappings parse as
-Python `True` and `False`, not strings. A rule like `when: {is_severe: yes}`
-silently never matched because `answers["is_severe"].choice` was `"yes"` (a
-string) while the rule expected `True` (a bool). The fix is in
-`schema.py`'s `_val()` — one line, but it ate two debugging sessions.
-
-**Decider doesn't like concurrency.** Sending two requests simultaneously
-sometimes produced garbled responses or hangs. The fix is a `threading.Lock`
-in `Decider2B.decide_many()`. Serialising requests adds no real latency because
-the game only sends one decision at a time anyway.
-
-**The light-delay illusion.** Compressing 12–18 minutes of Earth round-trip
-into 15 real seconds while keeping the game playable required the rover to
-genuinely stop, stay stopped, and only resume when the Earth desk cleared the
-order — not just cosmetically pause and auto-resume. `EarthDesk` in
-`game/desk.py` owns that state machine.
-
----
-
-## 7. Measured results
+## 6. Measured results
 
 All measurements on a laptop RTX 3050 6 GB under WSL2, checkpoint
 `StrandsAgents/strands-decider-2B-hobson-v19`.
@@ -272,7 +252,7 @@ All measurements on a laptop RTX 3050 6 GB under WSL2, checkpoint
 
 ---
 
-## 8. Quick start
+## 7. Quick start
 
 **Requirements:** Python 3.11+, `uv`, a GPU with ≥4 GB VRAM for Decider 2B.
 For Earth escalation: AWS credentials (Bedrock) or `ollama signin` (Ollama Cloud).
@@ -310,6 +290,47 @@ uv run pytest tests/ --ignore=tests/test_recipes.py
 | `i` | Open decision inspector |
 | `q` | Quit |
 
+**Running with Amazon Bedrock:**
+
+```bash
+# Set credentials (one-time)
+export AWS_REGION=us-east-1
+export AWS_ACCESS_KEY_ID=...
+export AWS_SECRET_ACCESS_KEY=...
+
+# Configure .env
+echo "ROVER_EARTH_PROVIDER=bedrock" >> .env
+echo "ROVER_EARTH_MODEL=anthropic.claude-haiku-5-5" >> .env
+
+# Start Decider, then play
+strands-decider serve StrandsAgents/strands-decider-2B-hobson-v19 --port 8099
+uv run roverthinking play
+```
+
+**Running with Ollama Cloud:**
+
+```bash
+# Sign in once
+ollama signin
+
+# Configure .env
+echo "ROVER_EARTH_PROVIDER=ollama" >> .env
+echo "ROVER_EARTH_MODEL=gpt-oss:120b-cloud" >> .env
+
+# Start Decider, then play
+strands-decider serve StrandsAgents/strands-decider-2B-hobson-v19 --port 8099
+uv run roverthinking play
+```
+
+**Verify whichever provider you chose:**
+
+```bash
+uv run roverthinking check
+# Expected output:
+#   ✓ Decider 2B  — reachable at localhost:8099
+#   ✓ Earth       — bedrock / anthropic.claude-haiku-5-5 responding
+```
+
 **Earth provider config** (in `.env`):
 
 ```env
@@ -324,7 +345,7 @@ ROVER_EARTH_MODEL=gpt-oss:120b-cloud
 
 ---
 
-## 9. Project layout
+## 8. Project layout
 
 ```
 ├── src/
