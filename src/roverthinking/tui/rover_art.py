@@ -1,15 +1,22 @@
-"""Draws Rovy using Unicode box-drawing characters and symbols.
+"""Draws Rovy as soft pixel art with a character-glyph face.
 
-No pixel layer is used — everything goes through canvas.put() directly.
-The rover is 14 chars wide × 7 text rows tall:
+The body — antennae, rounded head bezel, beveled chassis, treaded wheels — is painted
+into the canvas pixel layer (half-blocks at 2x vertical resolution) so it gets rounded
+corners and shading. The parts that must stay crisp and legible — the two eyes, the
+mouth/OLED indicator, the gold "ROVY" nameplate and the status LED — are drawn as
+character glyphs *on top* of the flushed pixels, so Rovy keeps her eleven moods.
 
-  row 0   │   ┌──────┐   │  head outline
-  row 1   │   │  ·   │   │  OLED indicator
-  row 2   │   │ ◉  ◉ │   │  eyes (expression changes with mood)
-  row 3   │ ╔══╧══════╧══╗ │  chassis top, joining the head
-  row 4   │ ║    ROVY   ·║ │  chassis body with name and status LED
-  row 5   │ ╚══╤═══╤═══╤╝ │  chassis bottom with three strut points
-  row 6   │    ◔   ◔   ◔  │  wheels (spin animated)
+Footprint is unchanged: 14 columns wide x 7 text rows tall, head top at `top`. The
+antennae poke one text row above the head. Grid (text rows; px = pixel rows = 2x):
+
+  row -1  │     ╷     ╷     │  antennae (glowing tips)
+  row 0   │    ╭───────╮    │  head bezel top (rounded)
+  row 1   │    │ ◉   ◉ │    │  eyes (expression + colour change with mood)
+  row 2   │    │   ·   │    │  mouth / OLED indicator
+  row 3   │  ▟█████████▙  │    chassis top bevel
+  row 4   │  █[ ROVY ]·█  │    recessed nameplate + status LED
+  row 5   │  ▜██╤═══╤═══╤▛  │  chassis bottom bevel + struts
+  row 6   │    ◐   ◐   ◐    │  wheels (spin animated, blue rim + hub)
 """
 
 from __future__ import annotations
@@ -22,14 +29,19 @@ from roverthinking.tui.canvas import RGB, Canvas, lerp
 
 # ── Palette ────────────────────────────────────────────────────────────────
 
-HEAD_BORDER: RGB = (180, 186, 202)
-HEAD_PLATE:  RGB = (24, 26, 34)
-CHASSIS:     RGB = (14, 16, 22)
-CHASSIS_HI:  RGB = (38, 42, 54)
-NAME_GOLD:   RGB = (218, 172, 62)
-STRUT:       RGB = (100, 106, 120)
-WHEEL:       RGB = (30, 30, 40)
-WHEEL_HI:    RGB = (78, 80, 94)
+BEZEL_HI:    RGB = (182, 190, 210)   # lit edge of the head shell
+BEZEL_LO:    RGB = (92, 98, 118)     # shadowed edge of the head shell
+SCREEN:      RGB = (16, 18, 26)      # dark face "glass"
+SCREEN_GLOW: RGB = (26, 40, 56)      # faint backlight inside the glass
+CHASSIS_HI:  RGB = (58, 64, 84)      # top bevel of the body
+CHASSIS_MID: RGB = (30, 34, 46)      # body midtone
+CHASSIS_LO:  RGB = (12, 13, 20)      # bottom bevel of the body
+PLATE_INSET: RGB = (42, 46, 62)      # recessed nameplate panel
+NAME_GOLD:   RGB = (224, 180, 70)
+STRUT:       RGB = (120, 126, 142)
+WHEEL:       RGB = (24, 26, 38)
+WHEEL_RIM:   RGB = (92, 150, 205)    # blue-ish tyre rim
+ANT_STALK:   RGB = (120, 128, 146)
 
 LED_COLORS: dict[str, RGB] = {
     "normal":    (70, 255, 100),
@@ -48,9 +60,9 @@ LED_COLORS: dict[str, RGB] = {
 # eye character per mood
 _EYE: dict[str, str] = {
     "normal":    "◉",
-    "blink":     "─",
-    "happy":     "◉",
-    "alert":     "◈",
+    "blink":     "–",
+    "happy":     "◠",
+    "alert":     "◉",
     "thinking":  "◎",
     "hurt":      "✕",
     "dizzy":     "@",
@@ -62,32 +74,32 @@ _EYE: dict[str, str] = {
 
 # eye colour per mood
 _EYE_COL: dict[str, RGB] = {
-    "normal":    (110, 220, 255),
+    "normal":    (120, 225, 255),
     "blink":     (70, 155, 188),
-    "happy":     (130, 255, 170),
-    "alert":     (255, 196, 70),
-    "thinking":  (120, 200, 255),
-    "hurt":      (255, 85, 75),
-    "dizzy":     (255, 85, 75),
-    "dead":      (90, 82, 80),
-    "sleepy":    (65, 115, 172),
-    "squint":    (95, 180, 215),
+    "happy":     (135, 255, 175),
+    "alert":     (255, 200, 80),
+    "thinking":  (130, 205, 255),
+    "hurt":      (255, 90, 80),
+    "dizzy":     (255, 90, 80),
+    "dead":      (96, 88, 86),
+    "sleepy":    (70, 120, 180),
+    "squint":    (100, 185, 220),
     "surprised": (255, 235, 150),
 }
 
-# OLED single-char icon per mood  (None = animated)
+# OLED/mouth single-char icon per mood  (None = animated)
 _OLED_ICON: dict[str, str | None] = {
-    "normal":    "·",
-    "blink":     "·",
-    "happy":     "♥",
+    "normal":    "‿",
+    "blink":     "‿",
+    "happy":     "◡",
     "alert":     "▲",
-    "thinking":  None,   # cycles · • ●
-    "hurt":      "×",
-    "dizzy":     "@",
-    "dead":      "─",
+    "thinking":  None,   # cycles . o O
+    "hurt":      "□",
+    "dizzy":     "~",
+    "dead":      "–",
     "sleepy":    "z",
     "squint":    "·",
-    "surprised": "!",
+    "surprised": "o",
 }
 
 _OLED_COL: dict[str, RGB] = {
@@ -99,8 +111,8 @@ _OLED_COL: dict[str, RGB] = {
     "sleepy":    (70, 120, 180),
 }
 
-# Wheel spin chars: a four-frame rolling animation
-WHEEL_CHARS = "◔◑◕◐"
+# Wheel spin: a four-frame rolling animation (rim rotating around the hub)
+WHEEL_CHARS = "◐◓◑◒"
 
 
 @dataclass
@@ -135,9 +147,10 @@ def draw_rover(
     # rover sits on the terrain at its centre column
     cx = left + S.ROVER_W // 2
     ground = surface[min(max(cx, 0), c.w - 1)]
-    top = ground - 6   # row 0 (head top) … row 6 (wheels)
+    top = ground - 6              # text row 0 (head top) … row 6 (wheels)
+    pbr = top * 2                 # pixel-row origin (pixel layer is 2x vertical)
 
-    # ── colour modifier ────────────────────────────────────────────────────
+    # ── colour modifier (dead / alert flash / safe-mode tint) ───────────────
     def col(c0: RGB) -> RGB:
         if dead:
             g = int(c0[0] * 0.30 + c0[1] * 0.59 + c0[2] * 0.11)
@@ -147,104 +160,106 @@ def draw_rover(
             return lerp(c0, (165, 38, 38), 0.45)
         return lerp(c0, tint, 0.22) if tint else c0
 
-    # ── helper ──────────────────────────────────────────────────────────────
+    # pixel into the rover's local frame: rx = column 0..13, pr = pixel row (0 = head top)
+    def px(rx: int, pr: int, c0: RGB) -> None:
+        c.px(left + rx, pbr + pr, col(c0))
+
+    # character overlay in the rover's local frame (text rows)
     def put(rx: int, ry: int, ch: str, fg: RGB, bg: RGB | None = None) -> None:
-        c.put(left + rx, top + ry, ch, fg, bg)
+        c.put(left + rx, top + ry, ch, col(fg), col(bg) if bg is not None else None)
 
-    # ── HEAD background fill (rows 0-2, cols 3-10) ──────────────────────────
-    hp = col(HEAD_PLATE)
-    hb = col(HEAD_BORDER)
-    for ry in range(3):
-        for rx in range(3, 11):
-            put(rx, ry, " ", hb, hp)
+    # ── ANTENNAE (one text row above the head) ───────────────────────────────
+    blink = 0.6 + 0.4 * math.sin(t * 4)
+    tip = led or _EYE_COL.get(mood, (120, 225, 255))
+    for ax in (4, 9):
+        px(ax, -2, lerp(col(ANT_STALK), col(tip), 0.2 + 0.6 * blink) if not dead else col(ANT_STALK))
+        px(ax, -1, col(ANT_STALK))
 
-    # head outline
-    put(3, 0, "┌", hb, hp);  put(10, 0, "┐", hb, hp)
+    # ── HEAD shell (pixel rows 0..5, cols 3..10) with rounded corners ───────
+    # interior face glass, with a faint top-down backlight
+    for pr in range(1, 5):
+        for rx in range(4, 10):
+            px(rx, pr, lerp(SCREEN_GLOW, SCREEN, pr / 5))
+    # top + bottom bezel (corners left empty → rounded)
     for rx in range(4, 10):
-        put(rx, 0, "─", hb, hp)
-    put(3, 1, "│", hb, hp);  put(10, 1, "│", hb, hp)
-    put(3, 2, "│", hb, hp);  put(10, 2, "│", hb, hp)
+        px(rx, 0, BEZEL_HI)
+        px(rx, 5, BEZEL_LO)
+    # left (lit) + right (shadowed) sides
+    for pr in range(1, 5):
+        px(3, pr, BEZEL_HI)
+        px(10, pr, BEZEL_LO)
 
-    # OLED icon (row 1, col 6)
+    # ── CHASSIS (pixel rows 6..11, cols 0..13), beveled + rounded ───────────
+    for pr in range(7, 11):                       # body midtone, gently graded
+        f = (pr - 7) / 4
+        for rx in range(0, 14):
+            px(rx, pr, lerp(CHASSIS_MID, CHASSIS_LO, 0.35 * f))
+    for rx in range(1, 13):                        # lit top bevel (row 6), rounded ends
+        px(rx, 6, CHASSIS_HI)
+    for rx in range(1, 13):                        # dark bottom bevel (row 11), rounded ends
+        px(rx, 11, CHASSIS_LO)
+    px(0, 7, CHASSIS_LO); px(13, 7, CHASSIS_LO)    # soften the top corners
+    # recessed nameplate panel behind "ROVY" (text row 4 → pixel rows 8,9)
+    for pr in (8, 9):
+        for rx in range(4, 10):
+            px(rx, pr, PLATE_INSET)
+
+    # ── STRUTS down to the wheels (pixel row 12) ────────────────────────────
+    for rx in S.WHEEL_X:
+        px(rx, 12, STRUT)
+
+    # commit the body to the cell grid before drawing the crisp glyph face
+    c.flush_pixels()
+
+    # ── FACE glyphs (drawn on top of the flushed pixels) ─────────────────────
+    gx = max(-1, min(1, gaze[0]))
+    face_bg = SCREEN if not dead else (18, 18, 20)
+    # eyes (text row 1, cols 5 and 8), nudged by gaze
+    eye_ch = _EYE.get(mood, "◉") if not dead else "×"
+    eye_fg = _EYE_COL.get(mood, (120, 225, 255)) if not dead else (96, 68, 65)
+    glow = lerp(face_bg, eye_fg, 0.0 if dead else 0.22)
+    put(5 + gx, 1, eye_ch, eye_fg, glow)
+    put(8 + gx, 1, eye_ch, eye_fg, glow)
+    # mouth / OLED indicator (text row 2, col 6)
     if dead:
-        oled_ch, oled_col = "─", col((110, 44, 40))
+        mouth_ch, mouth_col = "–", (110, 44, 40)
     else:
-        raw = _OLED_ICON.get(mood, "·")
-        oled_ch = ".·●"[int(t * 4) % 3] if raw is None else raw
-        oled_col = col(_OLED_COL.get(mood, (110, 225, 255)))
-    put(6, 1, oled_ch, oled_col, hp)
+        raw = _OLED_ICON.get(mood, "‿")
+        mouth_ch = ".oO"[int(t * 4) % 3] if raw is None else raw
+        mouth_col = _OLED_COL.get(mood, (110, 225, 255))
+    put(6, 2, mouth_ch, mouth_col, face_bg)
 
-    # eyes (row 2, cols 5 and 8)
-    if dead:
-        eye_ch = "×"
-        eye_fg = col((96, 68, 65))
-    else:
-        eye_ch = _EYE.get(mood, "◉")
-        eye_fg = col(_EYE_COL.get(mood, (110, 220, 255)))
-    put(5, 2, eye_ch, eye_fg, hp)
-    put(8, 2, eye_ch, eye_fg, hp)
-
-    # ── CHASSIS background fill (rows 3-5, all 14 cols) ────────────────────
-    ch  = col(CHASSIS)
-    chi = col(CHASSIS_HI)
-    for ry in range(3, 6):
-        for rx in range(14):
-            put(rx, ry, " ", chi, ch)
-
-    # chassis top (row 3): joins head at cols 3 and 10
-    put(0,  3, "╔", chi, ch);  put(13, 3, "╗", chi, ch)
-    put(1,  3, "═", chi, ch);  put(2,  3, "═", chi, ch)
-    put(3,  3, "╧", hb,  ch)   # head join left
-    for rx in range(4, 10):
-        put(rx, 3, "═", chi, ch)
-    put(10, 3, "╧", hb,  ch)   # head join right
-    put(11, 3, "═", chi, ch);  put(12, 3, "═", chi, ch)
-
-    # chassis body (row 4): name + status LED
-    put(0, 4, "║", chi, ch);  put(13, 4, "║", chi, ch)
+    # ── NAMEPLATE + status LED (text row 4) ─────────────────────────────────
     name = S.ROVER_NAME[:4].upper()
-    nx = (14 - len(name)) // 2   # = 5 for "ROVY"
-    name_col = col(NAME_GOLD) if not dead else col(CHASSIS_HI)
+    nx = (14 - len(name)) // 2    # = 5 for "ROVY"
+    name_col = NAME_GOLD if not dead else CHASSIS_HI
     for i, char in enumerate(name):
-        put(nx + i, 4, char, name_col, ch)
+        put(nx + i, 4, char, name_col, PLATE_INSET)
     if not dead:
         pulse = 0.68 + 0.32 * math.sin(t * 5)
         lc = led or LED_COLORS.get(mood, (70, 235, 110))
-        put(11, 4, "·", lerp(col(lc), (255, 255, 255), 0.42 * pulse), ch)
-
-    # chassis bottom (row 5): three strut points
-    st = col(STRUT)
-    put(0,  5, "╚", chi, ch);  put(13, 5, "╝", chi, ch)
-    put(1,  5, "═", chi, ch);  put(2,  5, "═", chi, ch)
-    put(3,  5, "╤", st,  ch)
-    put(4,  5, "═", chi, ch);  put(5,  5, "═", chi, ch);  put(6, 5, "═", chi, ch)
-    put(7,  5, "╤", st,  ch)
-    put(8,  5, "═", chi, ch);  put(9,  5, "═", chi, ch);  put(10, 5, "═", chi, ch)
-    put(11, 5, "╤", st,  ch)
-    put(12, 5, "═", chi, ch)
+        put(11, 4, "●", lerp(lc, (255, 255, 255), 0.42 * pulse), CHASSIS_MID)
 
     # ── sampling arm indicator ──────────────────────────────────────────────
     if arm_job is not None:
-        instrument, phase = arm_job
+        instrument, _ = arm_job
         tip_col = {
             "camera": (255, 255, 255),
             "spectrometer": (255, 90, 80),
             "drill": (255, 214, 120),
         }.get(instrument, (255, 255, 255))
-        put(12, 5, "↓", col(tip_col), ch)
+        put(12, 5, "↓", tip_col, CHASSIS_MID)
         if sample_floor_px is not None:
             arm_abs_x = left + 12
             for y in range(top + 6, sample_floor_px // 2 + 1):
                 c.put(arm_abs_x, y, "│", col(STRUT))
 
-    # ── wheels (row 6) ──────────────────────────────────────────────────────
+    # ── WHEELS (text row 6) — each sits on its own terrain height ────────────
+    # (drawn as glyphs *after* the pixel flush, so the scene's later flush leaves them alone)
     wch = WHEEL_CHARS[spin % 4]
-    wfg = col(WHEEL_HI)
-    wbg = col(WHEEL)
     for rx in S.WHEEL_X:
-        # each wheel sits at its own terrain height for natural grounding
         wr = surface[min(max(left + rx, 0), c.w - 1)]
-        c.put(left + rx, wr, wch, wfg, wbg)
+        c.put(left + rx, wr, wch, col(WHEEL_RIM), col(WHEEL))
 
     # ── pose ────────────────────────────────────────────────────────────────
     hubs = [(left + rx, surface[min(max(left + rx, 0), c.w - 1)] * 2 + 1) for rx in S.WHEEL_X]
