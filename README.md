@@ -28,6 +28,12 @@ times and measure how well it holds up.
 The reusable asset is a YAML-driven decision framework — `decider_framework` —
 that any Strands agent can use in two lines of Python.
 
+<div align="center">
+
+### ▶ [Watch the 3-minute demo](https://youtu.be/UCLZx7yTZsY)
+
+</div>
+
 ---
 
 ## Design overview
@@ -50,13 +56,14 @@ Every hazard fires a batch of yes/no questions at **Strands Decider 2B** (runnin
 | Field | Value |
 |---|---|
 | **Hackathon** | AWS Builder Center · Strands Decider 2B Agent Experience |
+| **Demo video** | [youtu.be/UCLZx7yTZsY](https://youtu.be/UCLZx7yTZsY) |
 | **Decision patterns** | Model routing (`#model-routing`) · Guardrails (`#guardrails`) |
 | **Tags** | `#strands-decider-2b` `#model-routing` |
 | **Earth model** | `us.anthropic.claude-haiku-4-5-20251001-v1:0` via Amazon Bedrock |
 | **Decider checkpoint** | `StrandsAgents/strands-decider-2B-hobson-v19` |
 | **Tests** | 92 passing (offline) |
 | **License** | MIT |
-| **Author** | Rahul Rajasekharan · London |
+| **Author** | Rahul Rajasekharan |
 
 ---
 
