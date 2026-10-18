@@ -12,14 +12,18 @@
 
 </div>
 
-Roverthinking is a terminal game where a tiny rover named **Rovy** navigates
-across Mars terrain, hitting dust storms, rockfalls, solar flares, and strange
-rocks. Every hazard triggers a real AI decision: Strands Decider 2B is asked
-five typed yes/no questions about the situation — in about 115 ms, on a laptop
-GPU — and its answers are turned into an action. When Decider isn't confident
-enough and waiting is safe, Rovy stops and escalates to **Earth** (Amazon
-Bedrock). Earth replies after a simulated light-delay. A stale-order guard
-checks the answer before it is applied.
+Roverthinking is an autonomous rover **agent** that runs in your terminal. A
+tiny rover named **Rovy** navigates across Mars terrain, hitting dust storms,
+rockfalls, solar flares, and strange rocks. Every hazard triggers a real AI
+decision: Strands Decider 2B is asked five typed yes/no questions about the
+situation — in about 115 ms, on a laptop GPU — and its answers are turned into
+an action. When Decider isn't confident enough and waiting is safe, Rovy stops
+and escalates to **Earth** (Amazon Bedrock). Earth replies after a simulated
+light-delay. A stale-order guard checks the answer before it is applied.
+
+The Mars run is the environment the agent acts in — a live simulation you can
+drive from the keyboard — so you can watch the same decision fire dozens of
+times and measure how well it holds up.
 
 The reusable asset is a YAML-driven decision framework — `decider_framework` —
 that any Strands agent can use in two lines of Python.
@@ -48,7 +52,7 @@ Every hazard fires a batch of yes/no questions at **Strands Decider 2B** (runnin
 | **Hackathon** | AWS Builder Center · Strands Decider 2B Agent Experience |
 | **Decision patterns** | Model routing (`#model-routing`) · Guardrails (`#guardrails`) |
 | **Tags** | `#strands-decider-2b` `#model-routing` |
-| **Earth model** | `anthropic.claude-haiku-5-5` via Amazon Bedrock |
+| **Earth model** | `global.anthropic.claude-haiku-5-5` via Amazon Bedrock |
 | **Decider checkpoint** | `StrandsAgents/strands-decider-2B-hobson-v19` |
 | **Tests** | 92 passing (offline) |
 | **License** | MIT |
@@ -58,7 +62,7 @@ Every hazard fires a batch of yes/no questions at **Strands Decider 2B** (runnin
 
 ## Table of contents
 
-1. [Why a rover game?](#1-why-a-rover-game)
+1. [Why a rover agent?](#1-why-a-rover-agent)
 2. [Design overview](#design-overview)
 3. [How the decisions work](#3-how-the-decisions-work)
 4. [The reusable framework](#4-the-reusable-framework)
@@ -70,10 +74,10 @@ Every hazard fires a batch of yes/no questions at **Strands Decider 2B** (runnin
 
 ---
 
-## 1. Why a rover game?
+## 1. Why a rover agent?
 
-The brief said: *use Decider 2B for a meaningful decision*. A game where the
-same decision fires dozens of times per session — with ground-truth outcomes you
+The brief said: *use Decider 2B for a meaningful decision*. An agent where the
+same decision fires dozens of times per run — with ground-truth outcomes you
 can measure — felt like the right way to actually stress-test a decision model
 rather than demo one.
 
@@ -114,7 +118,7 @@ confidence < 0.70  AND  can_wait = no   →  act on best guess, log "under_uncer
 ```
 
 Earth answers arrive after a simulated 12–18 minute light-delay (compressed to
-15 real seconds in the game). Before the answer is applied, a **stale-order
+15 real seconds in this run). Before the answer is applied, a **stale-order
 guard** asks Decider: *"Is the thing this order acts on still in the state the
 order expects?"* — blocking instructions that no longer make sense because the
 situation changed while the signal was in transit.
@@ -123,8 +127,8 @@ situation changed while the signal was in transit.
 
 ## 3. The reusable framework
 
-`src/decider_framework/` is a standalone Python package — no game code, no
-game imports. Any Strands agent can drop a YAML file in their project and get
+`src/decider_framework/` is a standalone Python package — no rover code, no
+simulation imports. Any Strands agent can drop a YAML file in their project and get
 structured decisions back with one call:
 
 ```python
@@ -267,10 +271,10 @@ uv sync
 # 2. Copy env and edit if needed
 cp .env.example .env
 
-# 3. Play with a mock Decider (fully offline, no GPU needed)
+# 3. Run the agent with a mock Decider (fully offline, no GPU needed)
 uv run roverthinking play --earth mock
 
-# 4. Play with real Decider 2B
+# 4. Run the agent with real Decider 2B
 strands-decider serve StrandsAgents/strands-decider-2B-hobson-v19 --port 8099
 uv run roverthinking play
 
@@ -301,9 +305,9 @@ export AWS_SECRET_ACCESS_KEY=...
 
 # Configure .env
 echo "ROVER_EARTH_PROVIDER=bedrock" >> .env
-echo "ROVER_EARTH_MODEL=anthropic.claude-haiku-5-5" >> .env
+echo "ROVER_EARTH_MODEL=global.anthropic.claude-haiku-5-5" >> .env
 
-# Start Decider, then play
+# Start Decider, then run the agent
 strands-decider serve StrandsAgents/strands-decider-2B-hobson-v19 --port 8099
 uv run roverthinking play
 ```
@@ -318,26 +322,29 @@ ollama signin
 echo "ROVER_EARTH_PROVIDER=ollama" >> .env
 echo "ROVER_EARTH_MODEL=gpt-oss:120b-cloud" >> .env
 
-# Start Decider, then play
+# Start Decider, then run the agent
 strands-decider serve StrandsAgents/strands-decider-2B-hobson-v19 --port 8099
 uv run roverthinking play
 ```
 
-**Verify whichever provider you chose:**
+**Verify whichever provider you chose** (`--ping` makes one real call to Earth, so a
+bad model ID or missing model access shows up here instead of silently falling back to mock):
 
 ```bash
-uv run roverthinking check
+uv run roverthinking check --ping
 # Expected output:
 #   ✓ Decider 2B  — reachable at localhost:8099
-#   ✓ Earth       — bedrock / anthropic.claude-haiku-5-5 responding
+#   ✓ Earth       — bedrock / global.anthropic.claude-haiku-5-5 responding
 ```
 
 **Earth provider config** (in `.env`):
 
 ```env
-# Bedrock (needs AWS_REGION + credentials)
+# Bedrock (needs AWS_REGION + credentials + model access enabled in the console)
+# Claude Haiku 5.5 is invoked via an inference profile: global.* (any region) or a geo
+# profile such as us.anthropic.claude-haiku-5-5 — the bare model ID is not on-demand callable.
 ROVER_EARTH_PROVIDER=bedrock
-ROVER_EARTH_MODEL=anthropic.claude-haiku-5-5
+ROVER_EARTH_MODEL=global.anthropic.claude-haiku-5-5
 
 # Ollama Cloud (needs `ollama signin`)
 ROVER_EARTH_PROVIDER=ollama

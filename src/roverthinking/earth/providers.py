@@ -310,7 +310,7 @@ def check_bedrock(s: Settings) -> str | None:
     except Exception as exc:  # noqa: BLE001
         return f"could not initialise AWS: {exc}"
     if not s.earth_model:
-        return "ROVER_EARTH_MODEL is not set; give it a Bedrock model ID such as anthropic.claude-haiku-5-5"
+        return "ROVER_EARTH_MODEL is not set; give it a Bedrock inference-profile ID such as global.anthropic.claude-haiku-5-5"
     return None
 
 

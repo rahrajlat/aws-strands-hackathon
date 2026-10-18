@@ -49,7 +49,9 @@ def load_settings(earth: str | None = None, decider: str | None = None) -> Setti
     mode = (decider or env("ROVER_DECIDER", "auto")).lower()
     if mode not in DECIDER_MODES:
         raise ValueError(f"unknown decider mode {mode!r}; use one of {DECIDER_MODES}")
-    default_model = "gpt-oss:120b-cloud" if provider != "bedrock" else "anthropic.claude-haiku-5-5"
+    # Claude Haiku 5.5 on Bedrock has no in-region on-demand endpoint; it is invoked through an
+    # inference profile, so the default is the cross-region `global.` profile ID, not the bare model ID.
+    default_model = "gpt-oss:120b-cloud" if provider != "bedrock" else "global.anthropic.claude-haiku-5-5"
     return Settings(
         earth_provider=provider,
         earth_model=env("ROVER_EARTH_MODEL") or default_model,
