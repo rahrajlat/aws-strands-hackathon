@@ -1,0 +1,108 @@
+# Hazard triage — how should Rovy respond to the current threat?
+#
+# Pattern: split-and-combine
+# Split one hard multi-way question into narrow yes/no classifiers;
+# combine the answers with plain policy rules. Small models answer
+# narrow questions far more accurately than one six-way choice.
+#
+# Measured on Strands Decider 2B (anthropic.claude-haiku-5-5 for escalation):
+#   correct_action: 34/40  (vs 22/40 single choice question)
+#   median_latency_ms: 127
+#   escalations_correct: 8/8
+
+name: hazard-triage
+description: >-
+  Classify a hazard situation and choose Rovy's response.
+  Asks five narrow yes/no classifiers in one batched request,
+  then applies ranked rules to pick the action.
+pattern: split-and-combine
+
+questions:
+  - key: is_external_threat
+    type: yesno
+    text: >-
+      Is the hazard weather or something from space: a solar flare, a meteor shower
+      or a dust storm? (A sand trap is soft ground, not weather.)
+    short: Weather or space threat?
+    yes: a solar flare, meteor shower or dust storm
+    no: >-
+      something on the ground (rockfall, a sand trap of soft sand, a steep slope),
+      a rock, or a fault inside the rover such as a sensor fault
+
+  - key: is_severe
+    type: yesno
+    text: Is the hazard's severity major or catastrophic, rather than minor?
+    short: Major or catastrophic?
+    yes: the severity is major or catastrophic
+    no: the severity is minor
+
+  - key: needs_safe_mode
+    type: yesno
+    text: >-
+      Is the hazard a sensor fault or a solar flare: a problem with the rover's own
+      electronics where it should switch to safe mode and reboot?
+    short: Fault inside the rover?
+    yes: a sensor fault or solar flare — switch to safe mode
+    no: >-
+      terrain or weather outside the rover: dust storm, rockfall,
+      sand trap, steep slope, meteor shower
+
+  - key: avoid_hazard
+    type: yesno
+    text: >-
+      Would driving through this hazard, even slowly, probably damage or trap the
+      rover? Major or catastrophic boulder fields, sand traps and steep slopes do;
+      so do minor ones when the wheels are worn.
+    short: Go around it?
+    yes: a major or catastrophic hazard, or the wheels are worn — go around it
+    no: a minor hazard and healthy wheels — it can be crossed carefully at low speed
+
+  - key: wait_it_out
+    type: yesno
+    text: >-
+      Is this a passing condition that makes driving unsafe right now, so that
+      stopping to wait is better than driving on?
+    short: Wait it out?
+    yes: a dust storm or meteor shower will pass; driving now risks damage
+    no: driving on carefully is fine
+
+escalation:
+  key: can_wait
+  type: yesno
+  text: Can the rover safely stop where it is and wait about ten minutes for an answer from Earth?
+  short: Safe to wait for Earth?
+  yes: waiting is safe — the hazard is fixed terrain or a rock
+  no: waiting is dangerous — a storm, flare or meteor shower is overhead, or the rover is stuck
+
+policy:
+  threshold: 0.70
+
+  rules:
+    # Shield blocks external severe threats (needs charges in the shield)
+    - name: shield severe external threat
+      when: {is_external_threat: yes, is_severe: yes}
+      then: shield
+      require_context: shield_ready
+
+    # No shield charges — severe external threat must be waited out
+    - name: stop for unshielded severe external threat
+      when: {is_external_threat: yes, is_severe: yes}
+      then: stop_and_wait
+
+    # Sensor fault or solar flare — safe mode
+    - name: fault inside rover
+      when: {needs_safe_mode: yes}
+      then: safe_mode
+
+    # Terrain that cannot be crossed — reroute (only when rover has position data)
+    - name: reroute around terrain
+      when: {avoid_hazard: yes}
+      then: reroute
+      require_context: positional
+
+    # Temporarily unsafe to drive — stop and wait
+    - name: wait out passing hazard
+      when: {wait_it_out: yes}
+      then: stop_and_wait
+
+  default: slow

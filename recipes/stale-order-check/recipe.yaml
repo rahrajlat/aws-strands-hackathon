@@ -1,0 +1,29 @@
+name: stale-order-check
+title: Stale Order Check (is this tool call still valid right now?)
+pattern: guardrails               # a pattern tag for the submission: #guardrails
+decision_type: yes_no             # Decider 2B "noul" question, answered with P(yes)
+question:
+  key: still_valid
+  text: Is the thing this tool call acts on still in the state the call expects?
+  options:
+    "yes": still in the expected state, so the call is still appropriate
+    "no": already done, cancelled, closed, expired, refunded, paid or unavailable, so the call is no longer appropriate
+policy:
+  block_when: answer is "no" AND confidence >= block_confidence
+  default_block_confidence: 0.50
+  on_decider_error: deny (fail closed; set fail_closed=False to proceed instead)
+wiring:
+  strands_api: strands.interventions.InterventionHandler.before_tool_call
+  file: handler.py
+  class: StaleCallGuard
+  actions_returned: Proceed, Deny (default) or Guide (action="guide")
+requires:
+  - strands-agents
+  - a running Decider 2B server (strands-decider serve <checkpoint> --port 8099)
+measured:
+  hardware: laptop RTX 3050 6 GB under WSL2, checkpoint StrandsAgents/strands-decider-2B-hobson-v19
+  set: 24 hand-labelled cases across 12 domains (12 still valid, 12 stale)
+  stale_blocked: 9/12
+  valid_wrongly_blocked: 0/12
+  median_check_latency_ms: 110
+  threshold_sweep_stale_blocked: {"0.50": 9, "0.60": 8, "0.70": 6}

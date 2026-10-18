@@ -1,0 +1,44 @@
+# Act-or-escalate / model routing — route to small or frontier model?
+#
+# Pattern: model-routing
+# Ask whether the request needs deep reasoning; use the small local model
+# when it does not, escalate to the frontier when it does or when uncertain.
+#
+# Measured on Strands Decider 2B:
+#   routing_correct: 36/40
+#   median_decision_latency_ms: 123
+#   false_escalations (sent to frontier when small would do): 2/40
+#   missed_escalations (kept small when frontier needed): 2/40
+#
+# Use via YamlRoutingStrategy.from_yaml() for automatic Strands wiring.
+
+name: act-or-escalate
+description: >-
+  Route an agent request to the small local model or the frontier model.
+  Escalates when the task needs deep reasoning, planning, nuance or specialist
+  knowledge, or when Decider's confidence in the routing decision is low.
+pattern: model-routing
+
+questions:
+  - key: needs_frontier
+    type: yesno
+    text: >-
+      Does answering this request need a frontier model? Consider the complexity,
+      reasoning depth, and domain expertise required.
+    short: Needs frontier model?
+    yes: >-
+      needs deep reasoning, planning, nuance or specialist knowledge;
+      ambiguous, multi-step, or ethically sensitive
+    no: >-
+      a short, simple, well-defined request a small model answers correctly;
+      fact lookup, extraction, format conversion, yes/no, summarise one document
+
+policy:
+  threshold: 0.70
+
+  rules:
+    - name: keep on small model
+      when: {needs_frontier: no}
+      then: small
+
+  default: frontier

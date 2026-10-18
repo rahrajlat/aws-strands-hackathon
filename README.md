@@ -1,2 +1,2 @@
 # aws-strands-hackathon
-Mars Decides
+Roverthinking

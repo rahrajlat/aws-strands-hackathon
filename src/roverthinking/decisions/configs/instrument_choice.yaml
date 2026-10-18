@@ -1,0 +1,44 @@
+# Instrument choice — which of Rovy's science instruments examines the rock?
+#
+# Pattern: act-or-escalate
+# One narrow binary question drives a two-way decision.
+# Low confidence escalates to Earth for a specialist opinion.
+#
+# Measured on Strands Decider 2B:
+#   correct: 19/20
+#   median_latency_ms: 112
+#   escalations: 3/20 (all on ambiguous rock descriptions)
+
+name: instrument-choice
+description: >-
+  Decide whether to drill a core or use the laser spectrometer on the rock ahead.
+  Drill only on soft layered sedimentary or clay material; use the laser on everything else.
+pattern: act-or-escalate
+
+questions:
+  - key: drill_worthwhile
+    type: yesno
+    text: >-
+      Is this rock soft layered sedimentary or clay-like material, where drilling
+      a core is safe and scientifically valuable?
+    short: Soft layered rock (drill)?
+    yes: layered sedimentary or clay rock — a drill core is safe and the best science
+    no: hard igneous rock, ice, or metal — drilling is risky or pointless; use the laser instead
+
+escalation:
+  key: can_wait
+  type: yesno
+  text: Can the rover safely stop where it is and wait about ten minutes for an answer from Earth?
+  short: Safe to wait for Earth?
+  yes: waiting is safe — no active hazard overhead
+  no: waiting is dangerous — an active hazard is overhead or the rover is stuck
+
+policy:
+  threshold: 0.70
+
+  rules:
+    - name: drill soft layered rock
+      when: {drill_worthwhile: yes}
+      then: drill
+
+  default: spectrometer
