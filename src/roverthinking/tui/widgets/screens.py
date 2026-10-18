@@ -174,7 +174,7 @@ class InspectorScreen(ModalScreen):
         card = card_from_record(rec)
         t = Text()
         t.append(
-            f"Earth provider: {self.earth_label}   ·   planner {d['planner']}   ·   tick {rec.tick}\n", "dim"
+            f"Earth: {self.earth_label}   ·   planner {d['planner']}   ·   tick {rec.tick}\n", "dim"
         )
         q = {
             "hazard_triage": Q.HAZARD_TRIAGE,

@@ -70,7 +70,7 @@ def play(
     if sc:
         seed = sc.seed
     model, note = make_decider(s.decider_mode, s.decider_url)
-    earth_model, earth_note = make_earth(s)
+    earth_model, _ = make_earth(s)
     session = GameSession(
         s,
         planner=planner,
@@ -82,9 +82,15 @@ def play(
         log_dir=log_dir,
     )
     em = earth_model
-    label = em.name if em.name == "mock" else f"{em.name}:{em.model_id}"
+    # The display never names the backend/model — the rover is simply contacting Earth.
+    if em.name == "mock":
+        label = "Mission Control (link faint)"
+        earth_line = "Earth link is faint — only limited guidance is getting through."
+    else:
+        label = "Mission Control"
+        earth_line = "Earth link online — contacting intelligence from Earth."
     try:
-        RoverApp(session, label, [note, earth_note]).run()
+        RoverApp(session, label, [note, earth_line]).run()
     finally:
         session.close()
 
