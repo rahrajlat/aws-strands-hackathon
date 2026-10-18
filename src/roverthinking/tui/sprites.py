@@ -1,34 +1,30 @@
-"""Art constants. The rover is drawn as pixel art in `rover_art.py` (two pixels per text cell,
-using half-block characters).
+"""Art constants for the character-based rover Rovy.
 
-Rovy is inspired by a small hobby robot: a matte-black chassis, a face made of two big silver
-ultrasonic-sensor "eyes" with a tiny OLED screen above them, a red circuit board with an antenna
-on the back, a gold logo, ridged black wheels and two glowing LED lights. The game scrolls
-sideways, so the chassis and its three wheels are seen from the side (the wheels follow the
-terrain on a rocker-bogie suspension) while the head faces the viewer, so the face is always
-readable."""
+Rovy is 14 chars wide × 7 text rows tall, drawn with Unicode box-drawing
+characters and symbols. No pixel layer is used.
+"""
 
 from __future__ import annotations
 
 ROVER_NAME = "Rovy"
 
-# geometry in pixels, relative to the rover's left edge and the top of its head
-ROVER_W = 38
-BODY_PX = 17  # head + chassis, in pixel rows
-WHEEL_PX = 6
-STRUT_PX = 2
-ROVER_ROWS = (BODY_PX + STRUT_PX + WHEEL_PX + 1) // 2  # text rows the whole rover occupies
-WHEEL_X = (6, 17, 28)  # wheel centres: rear, middle, front
-HEAD = (18, 0, 30, 10)  # x0, y0, x1, y1 of the head
-OLED = (21, 1, 28, 3)  # the little screen
-EYE_X = (19, 25)  # left edge of each 5-pixel eye
-EYE_Y = 5
-CHASSIS = (5, 11, 33, 16)
-PCB = (5, 8, 16, 10)
-ANTENNA = (7, 2)  # x, y of the antenna tip (signal arcs rise from here)
-LEDS = ((25, 14), (30, 14))  # centres of the two glowing lights
-ARM = (34, 13)  # where the sampling arm leaves the chassis
-STRUT_X = (9, 17, 25)  # where the struts meet the chassis
+ROVER_W = 14
+BODY_PX = 12       # rows 0-5 (head + chassis) = 6 rows × 2 px = 12 px
+WHEEL_PX = 2       # wheel row = 1 text row = 2 px
+STRUT_PX = 0
+ROVER_ROWS = (BODY_PX + STRUT_PX + WHEEL_PX + 1) // 2   # = 7
+
+WHEEL_X = (3, 7, 11)       # wheel column offsets from rover left
+HEAD = (3, 0, 10, 2)       # head bounding box: x0, y0, x1, y1
+OLED = (6, 1, 6, 1)        # single-char OLED indicator at column 6, row 1
+EYE_X = (5, 8)             # column offsets of left / right eye
+EYE_Y = 2
+CHASSIS = (0, 3, 13, 5)    # chassis bounding box
+PCB = (0, 3, 3, 3)         # antenna signal-arc anchor region
+ANTENNA = (2, 0)           # column, row of signal origin (used by scene for comms arcs)
+LEDS = ((11, 4),)          # single status LED position
+ARM = (8, 4)               # sampling arm exit point (ARM[0] + 6 ≈ right edge → headlight origin)
+STRUT_X = (3, 7, 11)       # strut positions under chassis (same as WHEEL_X)
 
 STATION = [
     "   |>          ",
