@@ -38,16 +38,29 @@ class YamlInterventionHandler:
 
     name: str
 
-    def __init__(self, config: DecisionConfig, model: Any, threshold: float | None = None) -> None:
+    def __init__(
+        self,
+        config: DecisionConfig,
+        model: Any,
+        threshold: float | None = None,
+        state_fn: Any | None = None,
+    ) -> None:
         self.config = config
         self.name = f"decider-{config.name}"
         self._engine = DecisionEngine(config)
         self._model = model
         self._threshold = threshold
+        self._state_fn = state_fn  # (event) -> str; overrides default state building
 
     @classmethod
-    def from_yaml(cls, path: str | Path, model: Any, threshold: float | None = None) -> "YamlInterventionHandler":
-        return cls(DecisionConfig.from_yaml(path), model, threshold)
+    def from_yaml(
+        cls,
+        path: str | Path,
+        model: Any,
+        threshold: float | None = None,
+        state_fn: Any | None = None,
+    ) -> "YamlInterventionHandler":
+        return cls(DecisionConfig.from_yaml(path), model, threshold, state_fn)
 
     def before_tool_call(self, event: Any, **kwargs: Any) -> Any:
         """Called by Strands before every tool call. Returns Proceed, Deny, or Guide."""
@@ -56,13 +69,15 @@ class YamlInterventionHandler:
         except ImportError:
             return None  # strands not installed; allow everything
 
-        tool_name = getattr(event, "tool_name", "unknown")
-        tool_input = getattr(event, "tool_input", {})
-
-        state = {
-            "tool": tool_name,
-            "input": json.dumps(tool_input, default=str)[:500],
-        }
+        if self._state_fn is not None:
+            state = {"description": self._state_fn(event)}
+        else:
+            tool_name = getattr(event, "tool_name", "unknown")
+            tool_input = getattr(event, "tool_input", {})
+            state = {
+                "tool": tool_name,
+                "input": json.dumps(tool_input, default=str)[:500],
+            }
 
         try:
             result = self._engine.decide(self._model, state, threshold=self._threshold)
