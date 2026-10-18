@@ -18,7 +18,7 @@ from pathlib import Path
 
 from decider_framework import YamlRoutingStrategy
 
-YAML = Path(__file__).parent.parent.parent / "decisions" / "act_or_escalate.yaml"
+YAML = Path(__file__).parent / "act_or_escalate.yaml"
 
 
 def make_router(decider, small_model, frontier_model, threshold: float = 0.70):

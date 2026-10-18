@@ -19,7 +19,7 @@ from typing import Any, Callable
 
 from decider_framework import YamlInterventionHandler
 
-YAML = Path(__file__).parent.parent.parent / "decisions" / "stale_order_check.yaml"
+YAML = Path(__file__).parent / "stale_order_check.yaml"
 
 
 def make_guard(
