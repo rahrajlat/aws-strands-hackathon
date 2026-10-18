@@ -24,6 +24,18 @@ checks the answer before it is applied.
 The reusable asset is a YAML-driven decision framework — `decider_framework` —
 that any Strands agent can use in two lines of Python.
 
+---
+
+## Design overview
+
+<div align="center">
+<img src="docs/assets/design.gif" alt="Roverthinking design overview — animated architecture flow" width="860">
+</div>
+
+Every hazard fires a batch of yes/no questions at **Strands Decider 2B** (running locally, ~115 ms). A **Policy Engine** matches the answers against YAML rules and checks the confidence score. If confidence is high enough the rover acts immediately. If it is low *and* waiting is safe, the request is queued for **Earth** — an Amazon Bedrock call that returns after a simulated 15-second light-delay. A **Stale Order Guard** re-asks Decider whether the situation has changed before the command is applied; commands that no longer make sense are dropped silently.
+
+---
+
 > **Hackathon submission** — AWS Builder Center · Agent Experience Hackathon: Strands Decider 2B
 > This is an independent open-source project. Not affiliated with or endorsed by AWS or Strands.
 
@@ -47,13 +59,14 @@ that any Strands agent can use in two lines of Python.
 ## Table of contents
 
 1. [Why a rover game?](#1-why-a-rover-game)
-2. [How the decisions work](#2-how-the-decisions-work)
-3. [The reusable framework](#3-the-reusable-framework)
-4. [The two recipe patterns](#4-the-two-recipe-patterns)
-5. [What the rover does](#5-what-the-rover-does)
-6. [Measured results](#6-measured-results)
-7. [Quick start](#7-quick-start)
-8. [Project layout](#8-project-layout)
+2. [Design overview](#design-overview)
+3. [How the decisions work](#3-how-the-decisions-work)
+4. [The reusable framework](#4-the-reusable-framework)
+5. [The two recipe patterns](#5-the-two-recipe-patterns)
+6. [What the rover does](#6-what-the-rover-does)
+7. [Measured results](#7-measured-results)
+8. [Quick start](#8-quick-start)
+9. [Project layout](#9-project-layout)
 
 ---
 
