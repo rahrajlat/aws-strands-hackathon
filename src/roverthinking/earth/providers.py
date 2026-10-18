@@ -285,9 +285,13 @@ def check_ollama(s: Settings) -> str | None:
         where = "Ollama Cloud" if direct else f"Ollama at {s.ollama_host}"
         hint = "check OLLAMA_API_KEY" if direct else "start it with `ollama serve`"
         return f"{where} is not reachable ({exc}); {hint}"
-    if not direct and s.earth_model not in names:
+    # Cloud models (`*-cloud` via the signed-in local app) are resolved on demand and do NOT
+    # appear in /api/tags unless explicitly pulled, so membership there is not a usability test.
+    # The successful /api/tags call above already confirms the daemon is up; a non-cloud local
+    # model, however, must actually be present.
+    if not direct and not s.earth_model.endswith("-cloud") and s.earth_model not in names:
         return (
-            f"the Ollama app has no model {s.earth_model!r}: run `ollama signin`, then "
+            f"the Ollama app has no model {s.earth_model!r}: run "
             f"`ollama pull {s.earth_model}`"
         )
     return None
