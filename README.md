@@ -1,16 +1,6 @@
 <div align="center">
 
-```
-   ┌──────┐
-   │  ·   │
-   │ ◉  ◉ │
-╔══╧══════╧══╗
-║    ROVY  · ║
-╚══╤═══╤═══╤╝
-   ◔   ◔   ◔
-```
-
-# Roverthinking
+<img src="docs/assets/banner.gif" alt="Roverthinking — A Mars rover that thinks before it drives" width="860">
 
 [![Python](https://img.shields.io/badge/Python-3.11%2B-3776AB?logo=python&logoColor=white)](https://www.python.org/)
 [![AWS Bedrock](https://img.shields.io/badge/AWS-Bedrock-FF9900?logo=amazonaws&logoColor=white)](https://aws.amazon.com/bedrock/)
@@ -20,7 +10,7 @@
 [![Tests](https://img.shields.io/badge/tests-92%20passing-22C55E?logo=pytest&logoColor=white)](tests/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
-**A Mars rover that thinks before it drives — and knows when to call home.**
+</div>
 
 Roverthinking is a terminal game where a tiny rover named **Rovy** navigates
 across Mars terrain, hitting dust storms, rockfalls, solar flares, and strange
@@ -33,8 +23,6 @@ checks the answer before it is applied.
 
 The reusable asset is a YAML-driven decision framework — `decider_framework` —
 that any Strands agent can use in two lines of Python.
-
-</div>
 
 > **Hackathon submission** — AWS Builder Center · Agent Experience Hackathon: Strands Decider 2B
 > This is an independent open-source project. Not affiliated with or endorsed by AWS or Strands.
