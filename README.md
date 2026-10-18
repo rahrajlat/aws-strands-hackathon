@@ -52,7 +52,7 @@ Every hazard fires a batch of yes/no questions at **Strands Decider 2B** (runnin
 | **Hackathon** | AWS Builder Center · Strands Decider 2B Agent Experience |
 | **Decision patterns** | Model routing (`#model-routing`) · Guardrails (`#guardrails`) |
 | **Tags** | `#strands-decider-2b` `#model-routing` |
-| **Earth model** | `global.anthropic.claude-haiku-5-5` via Amazon Bedrock |
+| **Earth model** | `us.anthropic.claude-haiku-4-5-20251001-v1:0` via Amazon Bedrock |
 | **Decider checkpoint** | `StrandsAgents/strands-decider-2B-hobson-v19` |
 | **Tests** | 92 passing (offline) |
 | **License** | MIT |
@@ -109,6 +109,14 @@ The first five classifiers feed a **policy engine** that matches rules in
 `decisions/hazard_triage.yaml`. The sixth — *can Rovy wait?* — is the
 escalation question.
 
+A confident local call looks like this — Decider 2B answers all five classifiers
+for a dust storm in one 576 ms batch, and because the result clears the 0.70
+threshold Rovy acts immediately (raise the shield), no Earth round-trip needed:
+
+<div align="center">
+<img src="docs/assets/decision-local.png" alt="Decision inspector — Decider 2B answers five yes/no classifiers for a dust storm and decides 'shield' at 0.83 confidence in 576 ms" width="820">
+</div>
+
 **The act-or-escalate logic:**
 
 ```
@@ -122,6 +130,19 @@ Earth answers arrive after a simulated 12–18 minute light-delay (compressed to
 guard** asks Decider: *"Is the thing this order acts on still in the state the
 order expects?"* — blocking instructions that no longer make sense because the
 situation changed while the signal was in transit.
+
+The built-in decision inspector (`i`) shows every call in full — the situation,
+who decided (Decider or Earth), the reasoning, the options considered, and the
+state snapshot the decision was made from:
+
+<div align="center">
+<img src="docs/assets/decision-inspector.png" alt="Decision inspector — an escalated rockfall resolved by Earth (reroute), with options, reasoning and state snapshot" width="820">
+</div>
+
+Here a low-confidence rockfall call was escalated to **Earth** (Amazon Bedrock,
+Claude Haiku 4.5), which recommended `reroute`; the game UI frames the backend
+as "Earth" for immersion, while the inspector records that Earth — not the local
+Decider — made this call.
 
 ---
 
@@ -305,7 +326,7 @@ export AWS_SECRET_ACCESS_KEY=...
 
 # Configure .env
 echo "ROVER_EARTH_PROVIDER=bedrock" >> .env
-echo "ROVER_EARTH_MODEL=global.anthropic.claude-haiku-5-5" >> .env
+echo "ROVER_EARTH_MODEL=us.anthropic.claude-haiku-4-5-20251001-v1:0" >> .env
 
 # Start Decider, then run the agent
 strands-decider serve StrandsAgents/strands-decider-2B-hobson-v19 --port 8099
@@ -334,17 +355,17 @@ bad model ID or missing model access shows up here instead of silently falling b
 uv run roverthinking check --ping
 # Expected output:
 #   ✓ Decider 2B  — reachable at localhost:8099
-#   ✓ Earth       — bedrock / global.anthropic.claude-haiku-5-5 responding
+#   ✓ Earth       — bedrock / us.anthropic.claude-haiku-4-5-20251001-v1:0 responding
 ```
 
 **Earth provider config** (in `.env`):
 
 ```env
 # Bedrock (needs AWS_REGION + credentials + model access enabled in the console)
-# Claude Haiku 5.5 is invoked via an inference profile: global.* (any region) or a geo
-# profile such as us.anthropic.claude-haiku-5-5 — the bare model ID is not on-demand callable.
+# us.* is the US cross-region inference profile (Haiku 4.5 isn't on-demand callable via the
+# bare model ID); outside the US use eu.* / apac.* / global.*.
 ROVER_EARTH_PROVIDER=bedrock
-ROVER_EARTH_MODEL=global.anthropic.claude-haiku-5-5
+ROVER_EARTH_MODEL=us.anthropic.claude-haiku-4-5-20251001-v1:0
 
 # Ollama Cloud (needs `ollama signin`)
 ROVER_EARTH_PROVIDER=ollama

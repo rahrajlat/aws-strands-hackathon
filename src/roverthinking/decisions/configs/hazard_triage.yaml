@@ -5,7 +5,7 @@
 # combine the answers with plain policy rules. Small models answer
 # narrow questions far more accurately than one six-way choice.
 #
-# Measured on Strands Decider 2B (anthropic.claude-haiku-5-5 for escalation):
+# Measured on Strands Decider 2B (us.anthropic.claude-haiku-4-5-20251001-v1:0 for escalation):
 #   correct_action: 34/40  (vs 22/40 single choice question)
 #   median_latency_ms: 127
 #   escalations_correct: 8/8
