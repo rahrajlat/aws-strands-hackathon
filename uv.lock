@@ -2062,6 +2062,7 @@ name = "roverthinking"
 version = "0.1.0"
 source = { editable = "." }
 dependencies = [
+    { name = "boto3" },
     { name = "python-dotenv" },
     { name = "pyyaml" },
     { name = "strands-agents", extra = ["ollama"] },
@@ -2085,6 +2086,7 @@ dev = [
 
 [package.metadata]
 requires-dist = [
+    { name = "boto3", specifier = ">=1.43.114" },
     { name = "matplotlib", marker = "extra == 'bench'", specifier = ">=3.8" },
     { name = "python-dotenv", specifier = ">=1.0" },
     { name = "pyyaml", specifier = ">=6.0" },
