@@ -242,7 +242,7 @@ print(result.confidence) # 0.87
 ## 5. What the rover does
 
 Rovy is a 14-character-wide Unicode rover rendered in a [Textual](https://textual.textualize.io/)
-TUI. She drives across a procedurally generated Mars landscape — scrolling
+TUI. He drives across a procedurally generated Mars landscape — scrolling
 terrain, day/night cycle, dust haze — and hits nine types of hazardous events:
 
 | Key | Hazard | Notes |
@@ -257,9 +257,9 @@ terrain, day/night cycle, dust haze — and hits nine types of hazardous events:
 | `t` | Sand trap | Terrain, slow or wait |
 | `n` | Cascade | Multi-hazard, highest stakes |
 
-Rovy's face — eyes, OLED screen, LED pulse — changes with her emotional state.
-She looks alert when a hazard is undecided, dizzy when stuck, happy when she
-reaches the science site, and sad when she runs out of health.
+Rovy's face — eyes, OLED screen, LED pulse — changes with his emotional state.
+He looks alert when a hazard is undecided, dizzy when stuck, happy when he
+reaches the science site, and sad when he runs out of health.
 
 ---
 
