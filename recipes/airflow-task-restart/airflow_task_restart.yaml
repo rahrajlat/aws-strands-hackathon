@@ -1,0 +1,63 @@
+# Airflow task restart — should a failed task be restarted, skipped, or escalated?
+#
+# Pattern: guardrails
+# Before retrying a failed task, ask whether restarting makes sense given the
+# failure type, retry budget, and the task's position in the DAG.
+#
+# Use via DecisionEngine.from_yaml() — see handler.py.
+
+name: airflow-task-restart
+description: >-
+  Decide whether to restart, skip, or escalate a failed Airflow task.
+  Restarts when the failure is transient and retries remain.
+  Skips when retries are exhausted or the failure is permanent.
+  Escalates when the task is on the critical path and the cause is unclear.
+pattern: guardrails
+
+questions:
+  - key: is_transient
+    type: yesno
+    text: >-
+      Is this failure likely transient rather than a persistent bug?
+    short: Transient failure?
+    yes: >-
+      network timeout, resource exhaustion, temporary lock, infra blip,
+      upstream service briefly unavailable, or OOM on a retry-safe task
+    no: >-
+      logic error, bad input data, schema mismatch, missing config,
+      or a bug that will reproduce on every retry
+
+  - key: retries_exhausted
+    type: yesno
+    text: >-
+      Has the task already used all its configured retries?
+    short: Retries exhausted?
+    yes: retry count has reached or exceeded max_retries
+    no: at least one retry attempt remains
+
+  - key: critical_path
+    type: yesno
+    text: >-
+      Is this task on the DAG's critical path — will downstream tasks stall
+      or the DAG SLA be missed if this task does not complete soon?
+    short: Critical path?
+    yes: downstream tasks are blocked and the run SLA is at risk
+    no: non-blocking; the DAG can continue independently of this task
+
+policy:
+  threshold: 0.65
+
+  rules:
+    - name: restart — transient failure with retries left
+      when: {is_transient: yes, retries_exhausted: no}
+      then: restart
+
+    - name: skip — retries exhausted, non-critical
+      when: {retries_exhausted: yes, critical_path: no}
+      then: skip
+
+    - name: escalate — retries exhausted on critical path
+      when: {retries_exhausted: yes, critical_path: yes}
+      then: escalate
+
+  default: escalate

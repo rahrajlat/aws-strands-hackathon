@@ -58,7 +58,7 @@ Every hazard fires a batch of yes/no questions at **Strands Decider 2B** (runnin
 | **Hackathon** | AWS Builder Center · Strands Decider 2B Agent Experience |
 | **Demo video** | [youtu.be/UCLZx7yTZsY](https://youtu.be/UCLZx7yTZsY) |
 | **Decision patterns** | Model routing (`#model-routing`) · Guardrails (`#guardrails`) |
-| **Tags** | `#strands-decider-2b` `#model-routing` |
+| **Tags** | `#strands-decider-2b` `#guardrails` |
 | **Earth model** | `us.anthropic.claude-haiku-4-5-20251001-v1:0` via Amazon Bedrock |
 | **Decider checkpoint** | `StrandsAgents/strands-decider-2B-hobson-v19` |
 | **Tests** | 92 passing (offline) |
@@ -195,54 +195,35 @@ policy:
   default: slow
 ```
 
-For Strands agents, the framework ships two ready-made wrappers:
+For Strands agents, the framework ships a ready-made guardrail wrapper:
 
 ```python
-from decider_framework import YamlInterventionHandler, YamlRoutingStrategy
+from decider_framework import YamlInterventionHandler
 
-# guardrail: block a tool call when Decider is confident it is stale
-guard  = YamlInterventionHandler.from_yaml("decisions/stale_order_check.yaml", model)
-
-# model router: send hard requests to a frontier model, easy ones to a small one
-router = YamlRoutingStrategy.from_yaml("decisions/act_or_escalate.yaml", model, small, frontier)
+guard = YamlInterventionHandler.from_yaml("decisions/my_guard.yaml", model)
 ```
 
 ---
 
-## 4. The two recipe patterns
+## 4. The recipe pattern
 
-`recipes/` contains two standalone, copy-pasteable decision patterns. Each
-folder is fully self-contained: a YAML config, a handler, an example, and a
-README with measured eval numbers.
+`recipes/airflow-task-restart/` is a standalone, copy-pasteable decision pattern:
+a YAML config and a handler that doubles as a runnable demo (`python handler.py`).
 
-### Act-or-Escalate (`#model-routing`)
+### Airflow Task Restart (`#guardrails`)
 
-Replaces Strands' built-in `ClassifierStrategy` — which asks an LLM to decide
-which model to use on *every request* — with a Decider 2B question that costs
-115 ms and zero tokens.
-
-- **36/40** routing decisions correct on 40 labelled customer-support requests
-- **0/20** simple requests needlessly escalated to the frontier model
-- **123 ms** median decision latency
+Asks Decider 2B whether a failed Airflow task should be restarted, skipped,
+or escalated — based on failure type, retry budget, and DAG criticality.
 
 ```python
-from handler import make_router
-router = make_router(decider, small_model, frontier_model)
-```
+from handler import restart_decision
 
-### Stale Order Check (`#guardrails`)
-
-An `InterventionHandler` that guards tool calls which may have become invalid
-by the time they run — queued approvals, plans made a minute ago, orders that
-crossed a slow link.
-
-- **9/12** stale calls correctly blocked
-- **0/12** valid calls incorrectly blocked
-- Works as a Strands `interventions=[guard]` drop-in
-
-```python
-from handler import make_guard
-guard = make_guard(decider, state_fn=describe_world)
+result = restart_decision(decider, {
+    "task": "load_clickstream", "dag": "daily_etl",
+    "error": "ConnectionTimeout: upstream API unreachable",
+    "retries": 1, "max_retries": 3, "critical_path": False,
+})
+print(result.action)  # "restart" | "skip" | "escalate"
 ```
 
 ---
@@ -279,8 +260,7 @@ All measurements on a laptop RTX 3050 6 GB under WSL2, checkpoint
 | Decision | Dataset | Score |
 |---|---|---|
 | Hazard triage (5 classifiers) | 40 labelled hazard events | **34/40** |
-| Needs-frontier routing | 40 labelled support requests | **36/40** |
-| Stale order check | 24 labelled tool-call states | **9/12** stale blocked, **0/12** valid blocked |
+| Airflow task restart | labelled task failure cases | **restart / skip / escalate** |
 | Median Decider latency | — | **~115 ms** |
 
 ---
@@ -398,8 +378,7 @@ ROVER_EARTH_MODEL=gpt-oss:120b-cloud
 │       └── tui/                  ← Textual app, Unicode rover art, decision panel
 ├── decisions/                    ← builder-facing copies of the decision configs
 ├── recipes/
-│   ├── act-or-escalate/          ← standalone model-routing pattern + eval
-│   └── stale-order-check/        ← standalone guardrail pattern + eval
+│   └── airflow-task-restart/     ← handler.py (runnable) + airflow_task_restart.yaml
 └── tests/                        ← 92 tests (offline)
 ```
 
