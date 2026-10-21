@@ -171,7 +171,7 @@ print(result.confidence)  # 0.87
 print(result.escalated)   # False — confidence cleared the 0.65 threshold
 ```
 
-**The YAML** — questions + policy rules, nothing else:
+**The YAML** — here is an example of how this pattern can be reused, for Amazon MWAA Airflow task restarts:
 
 ```yaml
 name: airflow-task-restart
