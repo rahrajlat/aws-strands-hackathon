@@ -215,15 +215,6 @@ policy:
 | Rover hazard triage (`decisions/hazard_triage.yaml`) | shield / slow / safe_mode / reroute |
 | [Airflow task restart](recipes/airflow-task-restart/) | restart / skip / escalate a failed Glue job |
 
-The framework also ships a Strands guardrail wrapper:
-
-```python
-from decider_framework import YamlInterventionHandler
-
-guard = YamlInterventionHandler.from_yaml("decisions/my_guard.yaml", model)
-agent = Agent(model=model, interventions=[guard])
-```
-
 ---
 
 ## 4. Recipes
