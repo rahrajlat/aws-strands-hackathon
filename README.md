@@ -19,7 +19,7 @@ decision: Strands Decider 2B is asked five typed yes/no questions about the
 situation — in about 115 ms, on a laptop GPU — and its answers are turned into
 an action. When Decider isn't confident enough and waiting is safe, Rovy stops
 and escalates to **Earth** (Amazon Bedrock). Earth replies after a simulated
-light-delay. A stale-order guard checks the answer before it is applied.
+light-delay.
 
 The Mars run is the environment the agent acts in — a live simulation you can
 drive from the keyboard — so you can watch the same decision fire dozens of
@@ -43,7 +43,7 @@ action; the [`recipes/`](recipes/) folder has more.
 <img src="docs/assets/design.gif" alt="Roverthinking design overview — animated architecture flow" width="860">
 </div>
 
-Every hazard fires a batch of yes/no questions at **Strands Decider 2B** (running locally, ~115 ms). A **Policy Engine** matches the answers against YAML rules and checks the confidence score. If confidence is high enough the rover acts immediately. If it is low *and* waiting is safe, the request is queued for **Earth** — an Amazon Bedrock call that returns after a simulated 15-second light-delay. A **Stale Order Guard** re-asks Decider whether the situation has changed before the command is applied; commands that no longer make sense are dropped silently.
+Every hazard fires a batch of yes/no questions at **Strands Decider 2B** (running locally, ~115 ms). A **Policy Engine** matches the answers against YAML rules and checks the confidence score. If confidence is high enough the rover acts immediately. If it is low *and* waiting is safe, the request is queued for **Earth** — an Amazon Bedrock call that returns after a simulated 15-second light-delay.
 
 ---
 
@@ -59,7 +59,7 @@ Every hazard fires a batch of yes/no questions at **Strands Decider 2B** (runnin
 | **Hackathon** | AWS Builder Center · Strands Decider 2B Agent Experience |
 | **Demo video** | [youtu.be/UCLZx7yTZsY](https://youtu.be/UCLZx7yTZsY) |
 | **Decision patterns** | Model routing (`#model-routing`) · Guardrails (`#guardrails`) |
-| **Tags** | `#strands-decider-2b` `#guardrails` |
+| **Tags** | `#strands-decider-2b` `#model-routing` `#guardrails` |
 | **Earth model** | `us.anthropic.claude-haiku-4-5-20251001-v1:0` via Amazon Bedrock |
 | **Decider checkpoint** | `StrandsAgents/strands-decider-2B-hobson-v19` |
 | **Tests** | 92 passing (offline) |
@@ -93,8 +93,8 @@ Mars also gave me a concrete real-world constraint: a real Mars rover cannot
 ask mission control every time it hits a pebble. It needs to decide locally,
 fast. But for genuinely ambiguous situations it needs a human (or at least a
 frontier model) in the loop — after the light-delay. That constraint maps
-directly onto the act-or-escalate pattern, and it makes the latency number
-*matter*.
+directly onto the decide-locally-or-escalate pattern, and it makes the latency
+number *matter*.
 
 ---
 
@@ -125,7 +125,7 @@ threshold Rovy acts immediately (raise the shield), no Earth round-trip needed:
 <img src="docs/assets/decision-local.png" alt="Decision inspector — Decider 2B answers five yes/no classifiers for a dust storm and decides 'shield' at 0.83 confidence in 576 ms" width="820">
 </div>
 
-**The act-or-escalate logic:**
+**Decision logic:**
 
 ```
 confidence ≥ 0.70  →  act immediately on Decider's answer
@@ -134,10 +134,7 @@ confidence < 0.70  AND  can_wait = no   →  act on best guess, log "under_uncer
 ```
 
 Earth answers arrive after a simulated 12–18 minute light-delay (compressed to
-15 real seconds in this run). Before the answer is applied, a **stale-order
-guard** asks Decider: *"Is the thing this order acts on still in the state the
-order expects?"* — blocking instructions that no longer make sense because the
-situation changed while the signal was in transit.
+15 real seconds in this run).
 
 The built-in decision inspector (`i`) shows every call in full — the situation,
 who decided (Decider or Earth), the reasoning, the options considered, and the
@@ -400,7 +397,7 @@ ROVER_EARTH_MODEL=gpt-oss:120b-cloud
 │   └── roverthinking/
 │       ├── cli.py                ← `roverthinking play | check | sim | bench`
 │       ├── decisions/configs/    ← YAML decision configs (installed with package)
-│       ├── planners/steward.py   ← act-or-escalate logic, Earth escalation
+│       ├── planners/steward.py   ← decision logic, Earth escalation
 │       ├── earth/                ← Bedrock + Ollama Cloud providers, light-delay queue
 │       ├── sim/                  ← rover state machine, hazards, scoring
 │       └── tui/                  ← Textual app, Unicode rover art, decision panel
