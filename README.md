@@ -25,8 +25,9 @@ The Mars run is the environment the agent acts in — a live simulation you can
 drive from the keyboard — so you can watch the same decision fire dozens of
 times and measure how well it holds up.
 
-The reusable asset is a YAML-driven decision framework — `decider_framework` —
-that any Strands agent can use in two lines of Python.
+The real output is a **YAML-driven decision framework** — `decider_framework` —
+that any agent can drop into their project. The rover is one example of it in
+action; the [`recipes/`](recipes/) folder has more.
 
 <div align="center">
 
@@ -72,12 +73,12 @@ Every hazard fires a batch of yes/no questions at **Strands Decider 2B** (runnin
 1. [Why a rover agent?](#1-why-a-rover-agent)
 2. [Design overview](#design-overview)
 3. [How the decisions work](#3-how-the-decisions-work)
-4. [The reusable framework](#4-the-reusable-framework)
-5. [The two recipe patterns](#5-the-two-recipe-patterns)
-6. [What the rover does](#6-what-the-rover-does)
-7. [Measured results](#7-measured-results)
-8. [Quick start](#8-quick-start)
-9. [Project layout](#9-project-layout)
+4. [The reusable framework](#3-the-reusable-framework)
+5. [Recipes](#4-recipes)
+6. [What the rover does](#5-what-the-rover-does)
+7. [Measured results](#6-measured-results)
+8. [Quick start](#7-quick-start)
+9. [Project layout](#8-project-layout)
 
 ---
 
@@ -156,75 +157,102 @@ Decider — made this call.
 ## 3. The reusable framework
 
 `src/decider_framework/` is a standalone Python package — no rover code, no
-simulation imports. Any Strands agent can drop a YAML file in their project and get
-structured decisions back with one call:
+simulation imports. Drop a YAML file in any project and get structured decisions
+back with two lines:
 
 ```python
 from decider_framework import DecisionEngine
 
-engine = DecisionEngine.from_yaml("decisions/hazard_triage.yaml")
-result = engine.decide(model=decider_2b, state=rover.snapshot())
+engine = DecisionEngine.from_yaml("recipes/airflow-task-restart/airflow_task_restart.yaml")
 
-print(result.action)      # "shield" | "slow" | "safe_mode" | "reroute" | …
-print(result.confidence)  # 0.82
-print(result.escalated)   # True — confidence was low and waiting was safe
+result = engine.decide(
+    model=decider_2b,
+    state={
+        "task": "load_clickstream", "dag": "daily_etl",
+        "error": "S3Exception: SlowDown — request throttled",
+        "retries": 1, "max_retries": 3, "critical_path": False,
+    },
+)
+
+print(result.action)      # "restart"
+print(result.confidence)  # 0.87
+print(result.escalated)   # False — confidence cleared the 0.65 threshold
 ```
 
-The YAML format maps typed questions to policy rules:
+**The YAML** — questions + policy rules, nothing else:
 
 ```yaml
-name: hazard-triage
-questions:
-  - key: is_external_threat
-    type: yesno
-    text: "Is the hazard weather or something from space?"
-    yes: "a solar flare, meteor shower or dust storm"
-    no: "terrain or a fault inside the rover"
+name: airflow-task-restart
 
-escalation:
-  key: can_wait
-  type: yesno
-  text: "Can the rover safely wait for an answer from Earth?"
+questions:
+  - key: is_transient
+    type: yesno
+    text: "Is this failure likely transient rather than a persistent bug?"
+    yes: "network timeout, resource exhaustion, OOM, infra blip"
+    no:  "logic error, schema mismatch, missing config"
+
+  - key: retries_exhausted
+    type: yesno
+    text: "Has the task already used all its configured retries?"
+
+  - key: critical_path
+    type: yesno
+    text: "Will downstream tasks stall or the SLA be missed if this task doesn't complete soon?"
 
 policy:
-  threshold: 0.70
+  threshold: 0.65
   rules:
-    - when: {is_external_threat: yes, is_severe: yes}
-      then: shield
-      require_context: shield_ready
-  default: slow
+    - when: {is_transient: yes, retries_exhausted: no}
+      then: restart
+    - when: {retries_exhausted: yes, critical_path: no}
+      then: skip
+    - when: {retries_exhausted: yes, critical_path: yes}
+      then: escalate
+  default: escalate
 ```
 
-For Strands agents, the framework ships a ready-made guardrail wrapper:
+**Two things built on it:**
+
+| Built on the framework | What it decides |
+|---|---|
+| Rover hazard triage (`decisions/hazard_triage.yaml`) | shield / slow / safe_mode / reroute |
+| [Airflow task restart](recipes/airflow-task-restart/) | restart / skip / escalate a failed Glue job |
+
+The framework also ships a Strands guardrail wrapper:
 
 ```python
 from decider_framework import YamlInterventionHandler
 
 guard = YamlInterventionHandler.from_yaml("decisions/my_guard.yaml", model)
+agent = Agent(model=model, interventions=[guard])
 ```
 
 ---
 
-## 4. The recipe pattern
+## 4. Recipes
 
-`recipes/airflow-task-restart/` is a standalone, copy-pasteable decision pattern:
-a YAML config and a handler that doubles as a runnable demo (`python handler.py`).
+[`recipes/airflow-task-restart/`](recipes/airflow-task-restart/) — standalone,
+copy-pasteable: a YAML config and a handler you can run immediately.
 
-### Airflow Task Restart (`#guardrails`)
+### Airflow / Glue task restart (`#guardrails`)
 
-Asks Decider 2B whether a failed Airflow task should be restarted, skipped,
-or escalated — based on failure type, retry budget, and DAG criticality.
+Asks Decider 2B whether a failed task should be restarted, skipped, or escalated —
+based on failure type, retry budget, and DAG criticality. When Decider's confidence
+is too low, it hands off to a frontier model on Amazon Bedrock.
 
 ```python
 from handler import restart_decision
 
 result = restart_decision(decider, {
     "task": "load_clickstream", "dag": "daily_etl",
-    "error": "ConnectionTimeout: upstream API unreachable",
+    "error": "S3Exception: SlowDown — request throttled",
     "retries": 1, "max_retries": 3, "critical_path": False,
 })
-print(result.action)  # "restart" | "skip" | "escalate"
+print(result.action)     # "restart" | "skip" | "escalate"
+print(result.confidence) # 0.87
 ```
+
+→ [Full recipe README](recipes/airflow-task-restart/README.md)
 
 ---
 
