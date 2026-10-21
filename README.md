@@ -288,6 +288,39 @@ All measurements on a laptop RTX 3050 6 GB under WSL2, checkpoint
 | Airflow task restart | labelled task failure cases | **restart / skip / escalate** |
 | Median Decider latency | — | **~115 ms** |
 
+### Decider 2B vs always-Bedrock
+
+| Metric | Decider 2B (local) | Always Bedrock |
+|---|---|---|
+| Cost per decision | **$0** (local GPU) | ~$0.0004 (Claude Haiku) |
+| Median latency | **~115 ms** | ~800 ms – 2 s |
+| 100-decision run | **~11.5 s** total | ~80–200 s total |
+| Works offline | **Yes** | No |
+
+In a 40-hazard run Decider 2B handles ~85% of decisions locally. Only genuinely
+ambiguous calls go to Earth — cutting API cost and round-trip wait by roughly **6×**.
+
+---
+
+## What I learned
+
+**Batching yes/no questions is the right abstraction.** Sending five classifiers in
+one request, sharing a single encoded state, is cleaner than prompt-engineering a
+single "what should Rovy do?" question. It gives you per-question confidence and a
+traceable policy you can read and change.
+
+**The confidence threshold is a design parameter, not a constant.** 0.70 worked well
+for rover hazards; 0.65 was better for the Airflow recipe. The threshold encodes your
+tolerance for local autonomy vs. escalation — different domains need different values.
+
+**The YAML pattern generalises.** I expected the rover to be the one interesting use
+case. The Airflow recipe showed the same engine works for operational decisions too —
+the questions change but the framework doesn't.
+
+**Latency matters more than accuracy in interactive loops.** 115 ms per batch call
+means the rover doesn't stutter. A frontier model call adds 800 ms+ of perceived lag
+even when it's more accurate. In a live simulation the UX difference is real.
+
 ---
 
 ## 7. Quick start
