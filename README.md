@@ -84,12 +84,7 @@ Every hazard fires a batch of yes/no questions at **Strands Decider 2B** (runnin
 
 ## 1. Why a rover agent?
 
-The brief said: *use Decider 2B for a meaningful decision*. An agent where the
-same decision fires dozens of times per run — with ground-truth outcomes you
-can measure — felt like the right way to actually stress-test a decision model
-rather than demo one.
-
-Mars also gave me a concrete real-world constraint: a real Mars rover cannot
+A real Mars rover cannot
 ask mission control every time it hits a pebble. It needs to decide locally,
 fast. But for genuinely ambiguous situations it needs a human (or at least a
 frontier model) in the loop — after the light-delay. That constraint maps
