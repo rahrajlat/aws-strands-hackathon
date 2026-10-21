@@ -33,9 +33,52 @@ def restart_decision(decider, task_state: dict):
 
 
 if __name__ == "__main__":
+    import sys
+    import time
+
+    # --demo: pre-canned colorized output, no Decider server needed
+    if "--demo" in sys.argv:
+        G = "\033[32m"; R = "\033[31m"; Y = "\033[33m"
+        B = "\033[1m";  D = "\033[2m";  X = "\033[0m"
+        ROWS = [
+            ("ingest_clickstream",   "daily_etl",
+             "S3Exception: SlowDown — read throughput exceeded, request throttled",
+             1, 3, False, "restart",  87),
+            ("transform_orders",     "daily_etl",
+             "AnalysisException: cannot resolve 'order_uuid' — column missing in source schema",
+             3, 3, True,  "escalate", 91),
+            ("aggregate_metrics",    "hourly_reporting",
+             "GlueException: Worker ran out of memory (G.1X DPU); job aborted",
+             0, 2, False, "restart",  79),
+            ("load_to_redshift",     "daily_etl",
+             "AccessDeniedException: glue-etl-role not authorized to call redshift:GetClusterCredentials",
+             2, 3, True,  "escalate", 88),
+            ("crawl_raw_zone",       "daily_etl",
+             "CrawlerException: Glue Data Catalog throttled — too many concurrent requests",
+             0, 2, False, "restart",  82),
+            ("join_customer_events", "daily_etl",
+             "GlueException: Internal service error (HTTP 500) after 4 min — no further details",
+             1, 3, True,  None,       58),
+        ]
+        print(f"{B}Airflow Task Restart — Decider 2B{X}\n")
+        for task, dag, error, ret, mx, crit, action, conf in ROWS:
+            print(f"{D}task:{X}     {task}  [{dag}]")
+            print(f"{D}error:{X}    {error}")
+            print(f"{D}retries:{X}  {ret}/{mx}  critical={crit}")
+            if action == "restart":
+                print(f"{D}decision:{X} {G}restart{X}  {D}(Decider 2B · {conf}% confidence · ~115 ms){X}")
+            elif action == "escalate":
+                print(f"{D}decision:{X} {R}escalate{X}  {D}(Decider 2B · {conf}% confidence · ~115 ms){X}")
+            else:
+                print(f"{D}decision:{X} {Y}unsure ({conf}%) — asking frontier model …{X}")
+                time.sleep(0.35)
+                print(f"{D}decision:{X} {R}escalate{X}  {D}(Amazon Bedrock){X}")
+            print()
+            time.sleep(0.22)
+        sys.exit(0)
+
     import json
     import os
-    import time
     import urllib.request
     from dataclasses import dataclass, field
 

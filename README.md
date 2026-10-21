@@ -31,7 +31,7 @@ action; the [`recipes/`](recipes/) folder has more.
 
 <div align="center">
 
-### ▶ [Watch the 3-minute demo](https://youtu.be/UCLZx7yTZsY)
+### ▶ [Watch the 3-minute demo](https://youtu.be/DX2ISAsgXFU)
 
 </div>
 
@@ -57,7 +57,7 @@ Every hazard fires a batch of yes/no questions at **Strands Decider 2B** (runnin
 | Field | Value |
 |---|---|
 | **Hackathon** | AWS Builder Center · Strands Decider 2B Agent Experience |
-| **Demo video** | [youtu.be/UCLZx7yTZsY](https://youtu.be/UCLZx7yTZsY) |
+| **Demo video** | [youtu.be/DX2ISAsgXFU](https://youtu.be/DX2ISAsgXFU) |
 | **Decision patterns** | Model routing (`#model-routing`) · Guardrails (`#guardrails`) |
 | **Tags** | `#strands-decider-2b` `#model-routing` `#guardrails` |
 | **Earth model** | `us.anthropic.claude-haiku-4-5-20251001-v1:0` via Amazon Bedrock |
