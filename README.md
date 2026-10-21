@@ -271,7 +271,6 @@ All measurements on a laptop RTX 3050 6 GB under WSL2, checkpoint
 | Decision | Dataset | Score |
 |---|---|---|
 | Hazard triage (5 classifiers) | 40 labelled hazard events | **34/40** |
-| Airflow task restart | labelled task failure cases | **restart / skip / escalate** |
 | Median Decider latency | — | **~115 ms** |
 
 ### Decider 2B vs always-Bedrock
