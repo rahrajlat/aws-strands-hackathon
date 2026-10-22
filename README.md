@@ -58,6 +58,7 @@ Every hazard fires a batch of yes/no questions at **Strands Decider 2B** (runnin
 |---|---|
 | **Hackathon** | AWS Builder Center · Strands Decider 2B Agent Experience |
 | **Demo video** | [youtube.com/watch?v=yf2MCe6SCBQ](https://www.youtube.com/watch?v=yf2MCe6SCBQ) |
+| **Article** | [AWS Builder Center](https://builder.aws.com/content/3KrGCFSzyZZ7WmYS8lrzps4k0ZD/rovy-a-decision-making-martian-rover-agent-powered-by-strands-decider-2b) |
 | **Decision patterns** | Model routing (`#model-routing`) |
 | **Tags** | `#strands-decider-2b` `#model-routing` |
 | **Earth model** | `us.anthropic.claude-haiku-4-5-20251001-v1:0` via Amazon Bedrock |
